@@ -1,0 +1,2 @@
+[workspace]
+members = [ "git-oidc","oidc-service-server"]
