@@ -1,15 +1,14 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use git_oidc::{fetch_jwks, validate_github_token};
+use anyhow::Result;
+use env_logger::Env;
+use git_oidc::{fetch_jwks, GithubJWKS};
+use log::{debug, error, info};  
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::Value;
-use log::{debug, info, error};
-use env_logger::Env;
-use color_eyre::eyre::Result;
 
 struct AppState {
-    jwks: Arc<RwLock<Value>>,
+    jwks: Arc<RwLock<GithubJWKS>>,
 }
 
 #[derive(Deserialize)]
@@ -23,7 +22,13 @@ async fn token_endpoint(
     data: web::Data<AppState>,
 ) -> impl Responder {
     debug!("Received token validation request");
-    match validate_github_token(&token_request.token, data.jwks.clone(), "https://github.com/Seif-Mamdouh").await {
+    match GithubJWKS::validate_github_token(
+        &token_request.token,
+        data.jwks.clone(),
+        Some("https://github.com/Seif-Mamdouh"),
+    )
+    .await
+    {
         Ok(claims) => {
             info!("Token validated successfully");
             HttpResponse::Ok().json(claims)
@@ -37,12 +42,12 @@ async fn token_endpoint(
 
 async fn hello() -> impl Responder {
     "Hello, OIDC!"
-}       
+}
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("debug"));
-    color_eyre::install()?;
+    // Remove color_eyre::install()?;
 
     info!("Starting OIDC server...");
 
